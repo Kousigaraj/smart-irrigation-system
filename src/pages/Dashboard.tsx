@@ -1,40 +1,89 @@
 import { useState, useEffect } from "react";
-import { Droplets, Thermometer, Wind, Power } from "lucide-react";
+import { Thermometer, Wind, Power } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
+import { ZoneCard } from "@/components/ZoneCard";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { toast } from "@/hooks/use-toast";
 
-interface SensorData {
+interface Zone {
+  id: string;
+  name: string;
+  cropType: string;
+  soilType: string;
   moisture: number;
+  valveOpen: boolean;
+  moistureThreshold: number;
+}
+
+interface SensorData {
   temperature: number;
   humidity: number;
   timestamp: Date;
 }
 
 export default function Dashboard() {
-  const [pumpStatus, setPumpStatus] = useState(false);
+  const [motorStatus, setMotorStatus] = useState(false);
+  const [zones, setZones] = useState<Zone[]>([
+    {
+      id: "zone-1",
+      name: "Zone 1 - North Field",
+      cropType: "Wheat",
+      soilType: "Clay",
+      moisture: 45,
+      valveOpen: false,
+      moistureThreshold: 35,
+    },
+    {
+      id: "zone-2",
+      name: "Zone 2 - South Field",
+      cropType: "Corn",
+      soilType: "Loam",
+      moisture: 28,
+      valveOpen: false,
+      moistureThreshold: 30,
+    },
+    {
+      id: "zone-3",
+      name: "Zone 3 - East Garden",
+      cropType: "Vegetables",
+      soilType: "Sandy",
+      moisture: 52,
+      valveOpen: false,
+      moistureThreshold: 40,
+    },
+  ]);
+
   const [sensorData, setSensorData] = useState<SensorData>({
-    moisture: 45,
     temperature: 24,
     humidity: 65,
     timestamp: new Date(),
   });
 
-  const [moistureHistory, setMoistureHistory] = useState<Array<{ time: string; moisture: number }>>([
-    { time: "10:00", moisture: 42 },
-    { time: "10:30", moisture: 40 },
-    { time: "11:00", moisture: 38 },
-    { time: "11:30", moisture: 43 },
-    { time: "12:00", moisture: 45 },
-  ]);
+  // Load zones from localStorage
+  useEffect(() => {
+    const savedZones = localStorage.getItem("irrigationZones");
+    if (savedZones) {
+      setZones(JSON.parse(savedZones));
+    }
+  }, []);
 
-  // Simulate real-time data updates
+  // Auto-control motor based on valve status
+  useEffect(() => {
+    const anyValveOpen = zones.some((zone) => zone.valveOpen);
+    setMotorStatus(anyValveOpen);
+  }, [zones]);
+
+  // Simulate real-time data updates for zones and sensors
   useEffect(() => {
     const interval = setInterval(() => {
+      setZones((prevZones) =>
+        prevZones.map((zone) => ({
+          ...zone,
+          moisture: Math.max(20, Math.min(80, zone.moisture + (Math.random() - 0.5) * 2)),
+        }))
+      );
+
       setSensorData((prev) => ({
-        moisture: Math.max(20, Math.min(80, prev.moisture + (Math.random() - 0.5) * 3)),
         temperature: Math.max(15, Math.min(35, prev.temperature + (Math.random() - 0.5) * 0.5)),
         humidity: Math.max(40, Math.min(90, prev.humidity + (Math.random() - 0.5) * 2)),
         timestamp: new Date(),
@@ -44,22 +93,19 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Update chart when sensor data changes
-  useEffect(() => {
-    const now = new Date();
-    const timeStr = `${now.getHours()}:${now.getMinutes().toString().padStart(2, "0")}`;
-
-    setMoistureHistory((prev) => {
-      const newHistory = [...prev, { time: timeStr, moisture: Math.round(sensorData.moisture) }];
-      return newHistory.slice(-10); // Keep last 10 readings
+  const toggleValve = (zoneId: string) => {
+    setZones((prevZones) => {
+      const newZones = prevZones.map((zone) =>
+        zone.id === zoneId ? { ...zone, valveOpen: !zone.valveOpen } : zone
+      );
+      localStorage.setItem("irrigationZones", JSON.stringify(newZones));
+      return newZones;
     });
-  }, [sensorData.moisture]);
 
-  const togglePump = () => {
-    setPumpStatus(!pumpStatus);
+    const zone = zones.find((z) => z.id === zoneId);
     toast({
-      title: pumpStatus ? "Pump Turned OFF" : "Pump Turned ON",
-      description: `Irrigation pump is now ${pumpStatus ? "inactive" : "active"}.`,
+      title: zone?.valveOpen ? "Valve Closed" : "Valve Opened",
+      description: `${zone?.name} valve is now ${zone?.valveOpen ? "closed" : "open"}.`,
     });
   };
 
@@ -67,18 +113,11 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">Real-time monitoring of your irrigation system</p>
+        <p className="text-muted-foreground mt-1">Variable rate irrigation system with zone control</p>
       </div>
 
-      {/* Sensor Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <StatCard
-          title="Soil Moisture"
-          value={sensorData.moisture.toFixed(1)}
-          unit="%"
-          icon={Droplets}
-          variant={sensorData.moisture < 30 ? "warning" : "success"}
-        />
+      {/* Environmental Sensors */}
+      <div className="grid gap-4 md:grid-cols-2">
         <StatCard
           title="Temperature"
           value={sensorData.temperature.toFixed(1)}
@@ -89,49 +128,43 @@ export default function Dashboard() {
         <StatCard title="Humidity" value={sensorData.humidity.toFixed(1)} unit="%" icon={Wind} variant="default" />
       </div>
 
-      {/* Pump Control */}
+      {/* Motor Control */}
       <Card className="p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div
               className={`rounded-full p-3 ${
-                pumpStatus ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"
+                motorStatus ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"
               }`}
             >
               <Power className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold">Irrigation Pump</h3>
+              <h3 className="text-lg font-semibold">Irrigation Motor</h3>
               <p className="text-sm text-muted-foreground">
-                Status: <span className={pumpStatus ? "text-success" : "text-muted-foreground"}>{pumpStatus ? "ON" : "OFF"}</span>
+                Status: <span className={motorStatus ? "text-success" : "text-muted-foreground"}>{motorStatus ? "ON" : "OFF"}</span>
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {motorStatus ? "Motor running - valves are open" : "Motor idle - all valves closed"}
               </p>
             </div>
           </div>
-          <Button onClick={togglePump} variant={pumpStatus ? "destructive" : "default"} size="lg">
-            {pumpStatus ? "Turn OFF" : "Turn ON"}
-          </Button>
+          <div className="text-right">
+            <div className="text-sm font-medium text-foreground">Active Zones</div>
+            <div className="text-2xl font-bold text-success">{zones.filter((z) => z.valveOpen).length}/{zones.length}</div>
+          </div>
         </div>
       </Card>
 
-      {/* Moisture Trend Chart */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Soil Moisture Trend</h3>
-        <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={moistureHistory}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-            <XAxis dataKey="time" stroke="hsl(var(--muted-foreground))" />
-            <YAxis stroke="hsl(var(--muted-foreground))" domain={[0, 100]} />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "hsl(var(--card))",
-                border: "1px solid hsl(var(--border))",
-                borderRadius: "var(--radius)",
-              }}
-            />
-            <Line type="monotone" dataKey="moisture" stroke="hsl(var(--chart-1))" strokeWidth={2} dot={{ fill: "hsl(var(--chart-1))" }} />
-          </LineChart>
-        </ResponsiveContainer>
-      </Card>
+      {/* Zone Controls */}
+      <div>
+        <h2 className="text-xl font-semibold text-foreground mb-4">Zone Control</h2>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {zones.map((zone) => (
+            <ZoneCard key={zone.id} zone={zone} onToggleValve={toggleValve} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
