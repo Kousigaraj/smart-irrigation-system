@@ -3,6 +3,8 @@ import { Thermometer, Wind, Power } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import { ZoneCard } from "@/components/ZoneCard";
 import { Card } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 
 interface Zone {
@@ -23,6 +25,7 @@ interface SensorData {
 
 export default function Dashboard() {
   const [motorStatus, setMotorStatus] = useState(false);
+  const [isAutoMode, setIsAutoMode] = useState(false);
   const [zones, setZones] = useState<Zone[]>([
     {
       id: "zone-1",
@@ -67,6 +70,29 @@ export default function Dashboard() {
     }
   }, []);
 
+  // Auto-control valves based on moisture thresholds in automatic mode
+  useEffect(() => {
+    if (!isAutoMode) return;
+
+    setZones((prevZones) => {
+      const newZones = prevZones.map((zone) => {
+        const needsWater = zone.moisture < zone.moistureThreshold;
+        if (needsWater !== zone.valveOpen) {
+          return { ...zone, valveOpen: needsWater };
+        }
+        return zone;
+      });
+      
+      // Only update if there's a change
+      const hasChanges = newZones.some((zone, idx) => zone.valveOpen !== prevZones[idx].valveOpen);
+      if (hasChanges) {
+        localStorage.setItem("irrigationZones", JSON.stringify(newZones));
+      }
+      
+      return newZones;
+    });
+  }, [isAutoMode, zones.map(z => z.moisture).join(','), zones.map(z => z.moistureThreshold).join(',')]);
+
   // Auto-control motor based on valve status
   useEffect(() => {
     const anyValveOpen = zones.some((zone) => zone.valveOpen);
@@ -94,6 +120,15 @@ export default function Dashboard() {
   }, []);
 
   const toggleValve = (zoneId: string) => {
+    if (isAutoMode) {
+      toast({
+        title: "Manual Control Disabled",
+        description: "Switch to manual mode to control valves manually.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setZones((prevZones) => {
       const newZones = prevZones.map((zone) =>
         zone.id === zoneId ? { ...zone, valveOpen: !zone.valveOpen } : zone
@@ -106,6 +141,16 @@ export default function Dashboard() {
     toast({
       title: zone?.valveOpen ? "Valve Closed" : "Valve Opened",
       description: `${zone?.name} valve is now ${zone?.valveOpen ? "closed" : "open"}.`,
+    });
+  };
+
+  const handleModeToggle = (checked: boolean) => {
+    setIsAutoMode(checked);
+    toast({
+      title: checked ? "Automatic Mode Enabled" : "Manual Mode Enabled",
+      description: checked 
+        ? "Valves will be controlled automatically based on moisture thresholds."
+        : "You can now control valves manually.",
     });
   };
 
@@ -128,8 +173,33 @@ export default function Dashboard() {
         <StatCard title="Humidity" value={sensorData.humidity.toFixed(1)} unit="%" icon={Wind} variant="default" />
       </div>
 
-      {/* Motor Control */}
+      {/* Irrigation Mode Control */}
       <Card className="p-6">
+        <div className="flex items-center justify-between mb-6 pb-6 border-b">
+          <div>
+            <h3 className="text-lg font-semibold mb-1">Irrigation Mode</h3>
+            <p className="text-sm text-muted-foreground">
+              {isAutoMode 
+                ? "Valves controlled automatically by moisture thresholds" 
+                : "Manual control of individual zone valves"}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Label htmlFor="mode-switch" className="text-sm font-medium">
+              Manual
+            </Label>
+            <Switch
+              id="mode-switch"
+              checked={isAutoMode}
+              onCheckedChange={handleModeToggle}
+            />
+            <Label htmlFor="mode-switch" className="text-sm font-medium text-success">
+              Automatic
+            </Label>
+          </div>
+        </div>
+
+        {/* Motor Control */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div
@@ -161,7 +231,7 @@ export default function Dashboard() {
         <h2 className="text-xl font-semibold text-foreground mb-4">Zone Control</h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {zones.map((zone) => (
-            <ZoneCard key={zone.id} zone={zone} onToggleValve={toggleValve} />
+            <ZoneCard key={zone.id} zone={zone} onToggleValve={toggleValve} isAutoMode={isAutoMode} />
           ))}
         </div>
       </div>
