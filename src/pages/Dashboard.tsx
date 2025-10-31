@@ -41,16 +41,7 @@ export default function Dashboard() {
       moisture: 28,
       valveOpen: false,
       moistureThreshold: 30,
-    },
-    {
-      id: "zone-3",
-      name: "Zone 3 - East Garden",
-      cropType: "Vegetables",
-      soilType: "Sandy",
-      moisture: 52,
-      valveOpen: false,
-      moistureThreshold: 40,
-    },
+    }
   ]);
 
   const [sensorData, setSensorData] = useState<SensorData>({

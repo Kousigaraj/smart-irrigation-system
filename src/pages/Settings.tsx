@@ -43,14 +43,7 @@ export default function Settings() {
       cropType: "Corn",
       soilType: "Loam",
       moistureThreshold: 30,
-    },
-    {
-      id: "zone-3",
-      name: "Zone 3 - East Garden",
-      cropType: "Vegetables",
-      soilType: "Sandy",
-      moistureThreshold: 40,
-    },
+    }
   ]);
 
   useEffect(() => {
