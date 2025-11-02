@@ -31,7 +31,7 @@ const App = () => (
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/weather" element={<Weather />} />
-                  <Route path="/history" element={<History />} />
+                  {/* <Route path="/history" element={<History />} /> */}
                   <Route path="/settings" element={<Settings />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />

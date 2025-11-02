@@ -50,7 +50,8 @@ export default function History() {
             <TableRow>
               <TableHead className="w-12">#</TableHead>
               <TableHead>Timestamp</TableHead>
-              <TableHead className="text-right">Moisture (%)</TableHead>
+              <TableHead className="text-right">Zone 1 Moisture (%)</TableHead>
+              <TableHead className="text-right">Zone 2 Moisture (%)</TableHead>
               <TableHead className="text-right">Temperature (°C)</TableHead>
               <TableHead className="text-right">Humidity (%)</TableHead>
             </TableRow>
@@ -60,6 +61,19 @@ export default function History() {
               <TableRow key={reading.id} className="hover:bg-muted/50 transition-colors">
                 <TableCell className="font-medium">{reading.id}</TableCell>
                 <TableCell>{reading.timestamp}</TableCell>
+                <TableCell className="text-right">
+                  <span
+                    className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                      reading.moisture < 30
+                        ? "bg-warning/10 text-warning"
+                        : reading.moisture > 60
+                        ? "bg-success/10 text-success"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {reading.moisture}%
+                  </span>
+                </TableCell>
                 <TableCell className="text-right">
                   <span
                     className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
@@ -83,7 +97,7 @@ export default function History() {
 
       <Card className="p-6 bg-muted/30">
         <p className="text-sm text-muted-foreground">
-          📊 Showing the last 10 sensor readings. Data is currently simulated for demonstration.
+          📊 Showing the last 10 sensor readings.
         </p>
       </Card>
     </div>

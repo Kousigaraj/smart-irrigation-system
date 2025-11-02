@@ -14,9 +14,10 @@ interface ZoneCardProps {
     moistureThreshold: number;
   };
   onToggleValve: (zoneId: string) => void;
+  isAutoMode?: boolean;
 }
 
-export function ZoneCard({ zone, onToggleValve }: ZoneCardProps) {
+export function ZoneCard({ zone, onToggleValve, isAutoMode = false }: ZoneCardProps) {
   const needsWater = zone.moisture < zone.moistureThreshold;
 
   return (
@@ -74,9 +75,15 @@ export function ZoneCard({ zone, onToggleValve }: ZoneCardProps) {
             <div className="text-sm font-medium">Solenoid Valve</div>
             <div className="text-xs text-muted-foreground">
               Status: <span className={zone.valveOpen ? "text-success" : "text-muted-foreground"}>{zone.valveOpen ? "OPEN" : "CLOSED"}</span>
+              {isAutoMode && <span className="ml-1">(Auto)</span>}
             </div>
           </div>
-          <Button onClick={() => onToggleValve(zone.id)} variant={zone.valveOpen ? "destructive" : "default"} size="sm">
+          <Button 
+            onClick={() => onToggleValve(zone.id)} 
+            variant={zone.valveOpen ? "destructive" : "default"} 
+            size="sm"
+            disabled={isAutoMode}
+          >
             {zone.valveOpen ? "Close Valve" : "Open Valve"}
           </Button>
         </div>
