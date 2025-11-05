@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
-import { Cloud, Droplets, Wind, Thermometer, CloudRain } from "lucide-react";
+import { Cloud, Droplets, Wind, Thermometer, CloudRain, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface WeatherDay {
@@ -21,7 +21,7 @@ export default function Weather() {
   useEffect(() => {
     const fetchWeather = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/weather");
+        const res = await fetch("https://smart-irrigation-backend-rsqq.onrender.com/api/weather");
         if (!res.ok) throw new Error("Failed to fetch weather data");
 
         const data = await res.json();
@@ -104,13 +104,13 @@ export default function Weather() {
     fetchWeather();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <p className="text-muted-foreground">Fetching weather data...</p>
-      </div>
-    );
-  }
+  if (loading)
+  return (
+    <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
+      <Loader2 className="h-6 w-6 animate-spin mb-2 text-primary" />
+      <p className="text-sm font-medium">Loading weather data...</p>
+    </div>
+  );
 
   return (
     <div className="space-y-6">

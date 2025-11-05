@@ -8,9 +8,10 @@ interface StatCardProps {
   unit: string;
   icon: LucideIcon;
   variant?: "default" | "success" | "warning" | "info";
+  isOnline: boolean;
 }
 
-export function StatCard({ title, value, unit, icon: Icon, variant = "default" }: StatCardProps) {
+export function StatCard({ title, value, unit, icon: Icon, variant = "default", isOnline }: StatCardProps) {
   const variantStyles = {
     default: "border-border",
     success: "border-success/20 bg-success/5",
@@ -31,7 +32,7 @@ export function StatCard({ title, value, unit, icon: Icon, variant = "default" }
         <div>
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
           <div className="mt-2 flex items-baseline gap-2">
-            <h2 className="text-4xl font-bold text-foreground">{value}</h2>
+            <h2 className={`text-4xl font-bold ${isOnline ? "text-foreground" : "text-muted-foreground"}`}>{value}</h2>
             <span className="text-lg text-muted-foreground">{unit}</span>
           </div>
         </div>

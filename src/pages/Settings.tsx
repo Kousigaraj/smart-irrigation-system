@@ -4,11 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Loader2} from "lucide-react";
 
 interface Zone {
   _id?: string;
-  id: string;
+  id?: string;
   name: string;
   cropType: string;
   soilType: string;
@@ -27,16 +27,18 @@ export default function Settings() {
     openWeatherApiKey: "",
     zones: [],
   });
+  const [loading, setLoading] = useState(false);
+  const [buttonLoading, setButtonLoading] = useState(false);
 
   // 🔹 Fetch settings from backend
   useEffect(() => {
     const fetchSettings = async () => {
+      setLoading(true);
       try {
-        const res = await fetch("http://localhost:5000/api/settings");
+        const res = await fetch("https://smart-irrigation-backend-rsqq.onrender.com/api/settings");
         if (!res.ok) throw new Error("Failed to fetch settings");
         const data = await res.json();
 
-        // Format backend data for frontend
         setSettings({
           city: data.city || "",
           openWeatherApiKey: data.openWeatherApiKey || "",
@@ -49,6 +51,8 @@ export default function Settings() {
           description: "Could not load settings from backend.",
           variant: "destructive",
         });
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -57,9 +61,10 @@ export default function Settings() {
 
   // 🔹 Save settings to backend
   const handleSave = async () => {
+    setButtonLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/settings", {
-        method: "POST",
+      const res = await fetch("https://smart-irrigation-backend-rsqq.onrender.com/api/settings", {
+        method: "PUT", // Use PUT for updates
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),
       });
@@ -80,6 +85,8 @@ export default function Settings() {
         description: "Could not save settings to backend.",
         variant: "destructive",
       });
+    } finally{
+      setButtonLoading(false);
     }
   };
 
@@ -88,17 +95,19 @@ export default function Settings() {
     setSettings((prev) => ({ ...prev, [field]: value }));
   };
 
-  // 🔹 Handle zone changes
-  const handleZoneChange = (zoneId: string, field: keyof Zone, value: string | number) => {
+  // 🔹 Handle zone changes (works for both _id and id)
+  const handleZoneChange = (zoneKey: string, field: keyof Zone, value: string | number) => {
     setSettings((prev) => ({
       ...prev,
       zones: prev.zones.map((zone) =>
-        zone.id === zoneId ? { ...zone, [field]: value } : zone
+        (zone._id === zoneKey || zone.id === zoneKey)
+          ? { ...zone, [field]: value }
+          : zone
       ),
     }));
   };
 
-  // 🔹 Add zone
+  // 🔹 Add new zone
   const addZone = () => {
     const newZone: Zone = {
       id: `zone-${Date.now()}`,
@@ -111,10 +120,10 @@ export default function Settings() {
   };
 
   // 🔹 Remove zone
-  const removeZone = (zoneId: string) => {
+  const removeZone = (zoneKey: string) => {
     setSettings((prev) => ({
       ...prev,
-      zones: prev.zones.filter((zone) => zone.id !== zoneId),
+      zones: prev.zones.filter((zone) => zone._id !== zoneKey && zone.id !== zoneKey),
     }));
 
     toast({
@@ -122,6 +131,14 @@ export default function Settings() {
       description: "The zone has been deleted.",
     });
   };
+
+  if (loading)
+  return (
+    <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
+      <Loader2 className="h-6 w-6 animate-spin mb-2 text-primary" />
+      <p className="text-sm font-medium">Loading settings data...</p>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -185,13 +202,13 @@ export default function Settings() {
 
         <div className="space-y-4">
           {settings.zones.map((zone, index) => (
-            <Card key={zone.id} className="p-4 bg-muted/30">
+            <Card key={zone._id || zone.id} className="p-4 bg-muted/30">
               <div className="flex items-start justify-between mb-4">
                 <h3 className="font-semibold text-foreground">
                   Zone {index + 1}
                 </h3>
                 <Button
-                  onClick={() => removeZone(zone.id)}
+                  onClick={() => removeZone(zone._id || zone.id!)}
                   variant="ghost"
                   size="sm"
                 >
@@ -201,56 +218,56 @@ export default function Settings() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor={`zone-name-${zone.id}`}>Zone Name</Label>
+                  <Label htmlFor={`zone-name-${zone._id || zone.id}`}>Zone Name</Label>
                   <Input
-                    id={`zone-name-${zone.id}`}
+                    id={`zone-name-${zone._id || zone.id}`}
                     value={zone.name}
                     onChange={(e) =>
-                      handleZoneChange(zone.id, "name", e.target.value)
+                      handleZoneChange(zone._id || zone.id!, "name", e.target.value)
                     }
                     placeholder="Zone 1 - North Field"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor={`zone-crop-${zone.id}`}>Crop Type</Label>
+                  <Label htmlFor={`zone-crop-${zone._id || zone.id}`}>Crop Type</Label>
                   <Input
-                    id={`zone-crop-${zone.id}`}
+                    id={`zone-crop-${zone._id || zone.id}`}
                     value={zone.cropType}
                     onChange={(e) =>
-                      handleZoneChange(zone.id, "cropType", e.target.value)
+                      handleZoneChange(zone._id || zone.id!, "cropType", e.target.value)
                     }
                     placeholder="Wheat"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor={`zone-soil-${zone.id}`}>Soil Type</Label>
+                  <Label htmlFor={`zone-soil-${zone._id || zone.id}`}>Soil Type</Label>
                   <Input
-                    id={`zone-soil-${zone.id}`}
+                    id={`zone-soil-${zone._id || zone.id}`}
                     value={zone.soilType}
                     onChange={(e) =>
-                      handleZoneChange(zone.id, "soilType", e.target.value)
+                      handleZoneChange(zone._id || zone.id!, "soilType", e.target.value)
                     }
                     placeholder="Clay"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor={`zone-threshold-${zone.id}`}>
+                  <Label htmlFor={`zone-threshold-${zone._id || zone.id}`}>
                     Moisture Threshold (%)
                   </Label>
                   <Input
-                    id={`zone-threshold-${zone.id}`}
+                    id={`zone-threshold-${zone._id || zone.id}`}
                     type="number"
                     min="0"
                     max="100"
                     value={zone.threshold}
                     onChange={(e) =>
                       handleZoneChange(
-                        zone.id,
+                        zone._id || zone.id!,
                         "threshold",
-                        parseInt(e.target.value) || 0
+                        Number(e.target.value)
                       )
                     }
                   />
@@ -262,7 +279,13 @@ export default function Settings() {
       </Card>
 
       <Button onClick={handleSave} className="w-full" size="lg">
-        Save All Settings
+        {buttonLoading ?
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...
+          </> 
+          :
+          "Save All Settings"
+        }
       </Button>
     </div>
   );

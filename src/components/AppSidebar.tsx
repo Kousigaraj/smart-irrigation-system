@@ -15,7 +15,7 @@ import {
 const items = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Weather", url: "/weather", icon: CloudRain },
-  // { title: "History", url: "/history", icon: History },
+  { title: "History", url: "/history", icon: History },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 

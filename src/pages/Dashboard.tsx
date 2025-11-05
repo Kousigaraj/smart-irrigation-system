@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Thermometer, Wind, Power } from "lucide-react";
+import { Thermometer, Wind, Power, Loader2, AlertTriangle } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import { ZoneCard } from "@/components/ZoneCard";
 import { Card } from "@/components/ui/card";
@@ -24,11 +24,15 @@ export default function Dashboard() {
   const [temperature, setTemperature] = useState(0);
   const [humidity, setHumidity] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isModeChanging, setIsModeChanging] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [loadingValveId, setLoadingValveId] = useState<string | null>(null);
+
 
   // ✅ Fetch Dashboard Data
   const fetchDashboardData = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/dashboard/data");
+      const res = await fetch("https://smart-irrigation-backend-rsqq.onrender.com/api/dashboard/data");
       if (!res.ok) throw new Error("Failed to fetch dashboard data");
 
       const data = await res.json();
@@ -36,6 +40,7 @@ export default function Dashboard() {
       setIsAutoMode(data.irrigationMode === "auto");
       setTemperature(data.temperature);
       setHumidity(data.humidity);
+      setLastUpdate(new Date(data.updatedAt));
       setZones(data.zones);
       setLoading(false);
     } catch (error) {
@@ -54,10 +59,29 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
+
+  const now = new Date();
+  const diffMinutes = lastUpdate ? (now.getTime() - lastUpdate.getTime()) / 60000 : null;
+  const isOnline = diffMinutes !== null && diffMinutes < 2;
+
+  function formatTimeAgo(minutes: number): string {
+    if (minutes < 60) {
+      const mins = Math.floor(minutes);
+      return `${mins} minute${mins === 1 ? "" : "s"}`;
+    }
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) {
+      return `${hours} hour${hours === 1 ? "" : "s"}`;
+    }
+    const days = Math.floor(hours / 24);
+    return `${days} day${days === 1 ? "" : "s"}`;
+  }
+
   // ✅ Switch between AUTO and MANUAL mode
   const handleModeToggle = async (checked: boolean) => {
+    setIsModeChanging(true);
     try {
-      const res = await fetch("http://localhost:5000/api/dashboard/mode-control", {
+      const res = await fetch("https://smart-irrigation-backend-rsqq.onrender.com/api/dashboard/mode-control", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode: checked ? "auto" : "manual" }),
@@ -81,6 +105,8 @@ export default function Dashboard() {
         description: error.message,
         variant: "destructive",
       });
+    } finally{
+      setIsModeChanging(false);
     }
   };
 
@@ -95,8 +121,10 @@ export default function Dashboard() {
       return;
     }
 
+    setLoadingValveId(zoneId);
+
     try {
-      const res = await fetch(`http://localhost:5000/api/dashboard/valve/${zoneId}`, {
+      const res = await fetch(`https://smart-irrigation-backend-rsqq.onrender.com/api/dashboard/valve/${zoneId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: !currentStatus }),
@@ -118,13 +146,30 @@ export default function Dashboard() {
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setLoadingValveId(null);
     }
   };
 
-  if (loading) return <p>Loading dashboard...</p>;
+  if (loading)
+  return (
+    <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
+      <Loader2 className="h-6 w-6 animate-spin mb-2 text-primary" />
+      <p className="text-sm font-medium">Loading dashboard data...</p>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
+      {!isOnline && (
+        <div className="bg-yellow-100 border border-yellow-300 text-yellow-800 px-4 py-3 rounded-md flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-sm sm:text-base">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0" />
+            <span className="font-medium">Connection lost:</span>
+          </div>
+          <span className="sm:ml-1">ESP32 has not sent data for over {formatTimeAgo(diffMinutes)}.</span>
+        </div>
+      )}  
       <div>
         <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
         <p className="text-muted-foreground mt-1">
@@ -136,17 +181,19 @@ export default function Dashboard() {
       <div className="grid gap-4 md:grid-cols-2">
         <StatCard
           title="Temperature"
-          value={temperature.toFixed(1)}
+          value={isOnline  ? temperature.toFixed(1) : "--"}
           unit="°C"
           icon={Thermometer}
           variant="info"
+          isOnline={isOnline}
         />
         <StatCard
           title="Humidity"
-          value={humidity.toFixed(1)}
+          value={isOnline  ? humidity.toFixed(1) : "--"}
           unit="%"
           icon={Wind}
           variant="default"
+          isOnline={isOnline}
         />
       </div>
 
@@ -169,6 +216,7 @@ export default function Dashboard() {
               id="mode-switch"
               checked={isAutoMode}
               onCheckedChange={handleModeToggle}
+              disabled={isModeChanging || !isOnline}
             />
             <Label htmlFor="mode-switch" className="text-sm font-medium text-success">
               Automatic
@@ -240,6 +288,8 @@ export default function Dashboard() {
                 toggleValve(zone.id, zone.valveStatus)
               }
               isAutoMode={isAutoMode}
+              loading={loadingValveId === zone.id}
+              isOnline={isOnline}
             />
           ))}
         </div>

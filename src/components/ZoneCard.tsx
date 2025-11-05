@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Droplets, Sprout, Mountain, Power } from "lucide-react";
+import { Droplets, Sprout, Mountain, Power, Loader2 } from "lucide-react";
 
 interface ZoneCardProps {
   zone: {
@@ -15,9 +15,11 @@ interface ZoneCardProps {
   };
   onToggleValve: (zoneId: string) => void;
   isAutoMode?: boolean;
+  loading?: boolean;
+  isOnline?: boolean;
 }
 
-export function ZoneCard({ zone, onToggleValve, isAutoMode = false }: ZoneCardProps) {
+export function ZoneCard({ zone, onToggleValve, isAutoMode = false, loading, isOnline}: ZoneCardProps) {
   const needsWater = zone.moisture < zone.moistureThreshold;
 
   return (
@@ -50,15 +52,15 @@ export function ZoneCard({ zone, onToggleValve, isAutoMode = false }: ZoneCardPr
           <div>
             <div className="text-sm text-muted-foreground mb-1">Soil Moisture</div>
             <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold text-foreground">{zone.moisture.toFixed(1)}</span>
+              <span className={`text-2xl font-bold ${isOnline ? "text-foreground" : "text-muted-foreground"}`}>{isOnline ? zone.moisture.toFixed(1) : "--"}</span>
               <span className="text-sm text-muted-foreground">%</span>
             </div>
-            <div className="flex items-center gap-1 mt-1">
-              <Droplets className={`h-3 w-3 ${needsWater ? "text-warning" : "text-success"}`} />
+            {isOnline && <div className="flex items-center gap-1 mt-1">
+               <Droplets className={`h-3 w-3 ${needsWater ? "text-warning" : "text-success"}`} />
               <span className={`text-xs ${needsWater ? "text-warning" : "text-success"}`}>
                 {needsWater ? "Needs water" : "Optimal"}
               </span>
-            </div>
+            </div>}
           </div>
 
           <div>
@@ -82,9 +84,17 @@ export function ZoneCard({ zone, onToggleValve, isAutoMode = false }: ZoneCardPr
             onClick={() => onToggleValve(zone.id)} 
             variant={zone.valveOpen ? "destructive" : "default"} 
             size="sm"
-            disabled={isAutoMode}
+            disabled={isAutoMode || loading || !isOnline}
           >
-            {zone.valveOpen ? "Close Valve" : "Open Valve"}
+             {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Processing...
+              </>
+            ) : zone.valveOpen ? (
+              "Close Valve"
+            ) : (
+              "Open Valve"
+            )}
           </Button>
         </div>
       </div>
