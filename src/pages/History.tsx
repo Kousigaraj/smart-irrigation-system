@@ -57,6 +57,14 @@ export default function History() {
     return `${days} day${days === 1 ? "" : "s"}`;
   }
 
+  if (loading)
+  return (
+    <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
+      <Loader2 className="h-6 w-6 animate-spin mb-2 text-primary" />
+      <p className="text-sm font-medium">Loading History data...</p>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       {!isOnline && (
@@ -76,76 +84,137 @@ export default function History() {
       </div>
 
       <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>#</TableHead>
-              <TableHead>Timestamp</TableHead>
-              {records[0]?.zones.map((zone, i) => (
-                <TableHead key={i} className="text-right">
-                  {zone.name || `Zone ${i + 1}`} Moisture (%)
-                </TableHead>
-              ))}
-              <TableHead className="text-right">Temperature (°C)</TableHead>
-              <TableHead className="text-right">Humidity (%)</TableHead>
-            </TableRow>
-          </TableHeader>
+        {/* Desktop / tablet table (md+) - allow horizontal scroll when needed */}
+        <div className="hidden md:block">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>#</TableHead>
+                  <TableHead>Timestamp</TableHead>
+                  {records[0]?.zones.map((zone, i) => (
+                    <TableHead key={i} className="text-right">
+                      {zone.name || `Zone ${i + 1}`} Moisture (%)
+                    </TableHead>
+                  ))}
+                  <TableHead className="text-right">Temperature (°C)</TableHead>
+                  <TableHead className="text-right">Humidity (%)</TableHead>
+                </TableRow>
+              </TableHeader>
 
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
-                  <div className="flex items-center justify-center gap-2 py-2">
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                    <span>Loading data...</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : records.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
-                  No records found
-                </TableCell>
-              </TableRow>
-            ) : (
-              records
-                .slice(-10)
-                .map((record, index) => (
-                  <TableRow key={record._id} className="hover:bg-muted/50 transition-colors">
-                    <TableCell className="font-medium">{index + 1}</TableCell>
-                    <TableCell>
-                      {new Date(record.createdAt).toLocaleString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        second: "2-digit",
-                      })}
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                      <div className="flex items-center justify-center gap-2 py-2">
+                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                        <span>Loading data...</span>
+                      </div>
                     </TableCell>
-
-                    {record.zones.map((zone, i) => (
-                      <TableCell key={i} className="text-right">
-                        <span
-                          className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                            zone.soilMoisture < 30
-                              ? "bg-warning/10 text-warning"
-                              : zone.soilMoisture > 60
-                              ? "bg-success/10 text-success"
-                              : "bg-muted text-muted-foreground"
-                          }`}
-                        >
-                          {zone.soilMoisture}%
-                        </span>
-                      </TableCell>
-                    ))}
-
-                    <TableCell className="text-right">{record.temperature.toFixed(1)}°C</TableCell>
-                    <TableCell className="text-right">{record.humidity.toFixed(1)}%</TableCell>
                   </TableRow>
-                ))
-            )}
-          </TableBody>
-        </Table>
+                ) : records.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                      No records found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  records
+                    .slice(-10)
+                    .map((record, index) => (
+                      <TableRow key={record._id} className="hover:bg-muted/50 transition-colors">
+                        <TableCell className="font-medium">{index + 1}</TableCell>
+                        <TableCell>
+                          {new Date(record.createdAt).toLocaleString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit",
+                          })}
+                        </TableCell>
+
+                        {record.zones.map((zone, i) => (
+                          <TableCell key={i} className="text-right">
+                            <span
+                              className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                                zone.soilMoisture < 30
+                                  ? "bg-warning/10 text-warning"
+                                  : zone.soilMoisture > 60
+                                  ? "bg-success/10 text-success"
+                                  : "bg-muted text-muted-foreground"
+                              }`}>
+                              {zone.soilMoisture}%
+                            </span>
+                          </TableCell>
+                        ))}
+
+                        <TableCell className="text-right">{record.temperature.toFixed(1)}°C</TableCell>
+                        <TableCell className="text-right">{record.humidity.toFixed(1)}%</TableCell>
+                      </TableRow>
+                    ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+
+        {/* Mobile stacked/card view - shows for screens smaller than md */}
+        <div className="md:hidden space-y-3">
+          {loading ? (
+            <div className="text-center text-muted-foreground py-4">
+              <Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" />
+              <div className="mt-2">Loading data...</div>
+            </div>
+          ) : records.length === 0 ? (
+            <div className="text-center text-muted-foreground py-4">No records found</div>
+          ) : (
+            records.slice(-10).map((record, index) => (
+              <div key={record._id} className="border rounded-md p-3 bg-background">
+                <div className="flex items-start justify-between">
+                  <div className="text-sm font-medium">#{index + 1}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(record.createdAt).toLocaleString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                    })}
+                  </div>
+                </div>
+
+                <div className="mt-3 space-y-2">
+                  {record.zones.map((zone, i) => (
+                    <div key={i} className="flex justify-between items-center text-sm">
+                      <div className="text-muted-foreground">{zone.name || `Zone ${i + 1}`}</div>
+                      <div
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                          zone.soilMoisture < 30
+                            ? "bg-warning/10 text-warning"
+                            : zone.soilMoisture > 60
+                            ? "bg-success/10 text-success"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {zone.soilMoisture}%
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <div>Temp</div>
+                    <div>{record.temperature.toFixed(1)}°C</div>
+                  </div>
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <div>Humidity</div>
+                    <div>{record.humidity.toFixed(1)}%</div>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </Card>
 
       <Card className="p-6 bg-muted/30">
